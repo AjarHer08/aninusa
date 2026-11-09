@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -19,6 +20,8 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import id.aninusa.app.data.Favorite
 import id.aninusa.app.data.LocalStore
 import id.aninusa.app.data.ReadingProgress
@@ -49,6 +53,8 @@ fun LibraryScreen(
     onContinueReading: (ReadingProgress) -> Unit
 ) {
     val userData by LocalStore.get().data.collectAsState()
+    val viewModel: LibraryViewModel = viewModel()
+    val updateState by viewModel.state.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(Modifier.fillMaxSize()) {
@@ -108,8 +114,18 @@ fun LibraryScreen(
                 LazyColumn(
                     contentPadding = PaddingValues(bottom = 24.dp)
                 ) {
+                    item(key = "update-bar") {
+                        UpdateBar(
+                            checking = updateState.checking,
+                            message = updateState.message,
+                            onCheck = { viewModel.checkUpdates(userData.progress) }
+                        )
+                    }
                     items(userData.progress, key = { it.mangaId }) { progress ->
-                        ProgressRow(progress) { onContinueReading(progress) }
+                        ProgressRow(
+                            progress = progress,
+                            update = updateState.updates[progress.mangaId]
+                        ) { onContinueReading(progress) }
                     }
                 }
             }
@@ -157,7 +173,44 @@ private fun FavoriteCard(favorite: Favorite, onClick: () -> Unit) {
 }
 
 @Composable
-private fun ProgressRow(progress: ReadingProgress, onClick: () -> Unit) {
+private fun UpdateBar(checking: Boolean, message: String?, onCheck: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = "Cek update chapter",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = message
+                    ?: "Periksa apakah ada chapter baru untuk judul di riwayat bacamu.",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(Modifier.width(10.dp))
+        if (checking) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(22.dp),
+                strokeWidth = 2.dp
+            )
+        } else {
+            Button(onClick = onCheck) { Text("Cek") }
+        }
+    }
+}
+
+@Composable
+private fun ProgressRow(
+    progress: ReadingProgress,
+    update: ChapterUpdate?,
+    onClick: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -194,6 +247,14 @@ private fun ProgressRow(progress: ReadingProgress, onClick: () -> Unit) {
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            update?.let {
+                Spacer(Modifier.height(4.dp))
+                Pill(
+                    text = "Baru · ${it.latestLabel}",
+                    container = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
+            }
         }
     }
 }

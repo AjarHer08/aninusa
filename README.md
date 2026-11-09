@@ -9,7 +9,7 @@ komik (manga, manhwa, manhua) dengan chapter berbahasa Indonesia.
 - **Min SDK:** 23 (Android 6.0 Marshmallow)
 - **Compile/Target SDK:** 36 (Android 16), sehingga tetap bisa dipasang dan berjalan di
   versi Android yang lebih baru, termasuk Android 17.
-- **APK siap pasang:** [`dist/AniNusa-1.0.0-debug.apk`](dist/AniNusa-1.0.0-debug.apk)
+- **APK siap pasang:** [`dist/AniNusa-1.0.1-debug.apk`](dist/AniNusa-1.0.1-debug.apk)
 
 ## Fitur
 
@@ -35,6 +35,10 @@ komik (manga, manhwa, manhua) dengan chapter berbahasa Indonesia.
 
 **Lainnya**
 - Koleksi favorit anime + komik, riwayat baca dengan tombol lanjut baca.
+- **Cek update chapter**: satu tombol di riwayat baca memeriksa chapter terbaru setiap
+  judul di MangaDex dan menandai judul yang punya chapter baru.
+- **Diagnostik koneksi** di Pengaturan untuk mengecek AniList, MangaDex, dan pemuatan gambar
+  bila data gagal dimuat.
 - Tema gelap/terang/mengikuti sistem, pengaturan bahasa chapter, dan hapus riwayat.
 - Semua teks antarmuka berbahasa Indonesia.
 
@@ -86,11 +90,30 @@ Jadi APK bisa diunduh tanpa build lokal, langsung dari artifact Actions atau hal
 ## Pasang APK
 
 ```bash
-adb install -r dist/AniNusa-1.0.0-debug.apk
+adb install -r dist/AniNusa-1.0.1-debug.apk
 ```
 
 Atau salin APK ke HP, aktifkan "Instal dari sumber tidak dikenal", lalu buka file APK.
 APK ini ditandatangani dengan debug keystore, cocok untuk pemakaian pribadi dan pengujian.
+
+## Pemecahan masalah
+
+Bila muncul pesan data gagal dimuat padahal internet lancar, buka
+**Pengaturan → Bantuan → Diagnostik koneksi** lalu tekan **Periksa**. Hasilnya menunjukkan
+sumber mana yang gagal beserta pesannya:
+
+- *Terlalu banyak permintaan (HTTP 429)* atau *Server sedang bermasalah (HTTP 5xx)* —
+  server publik sedang membatasi; tunggu 1–2 menit lalu coba lagi.
+- *Jaringan mengembalikan halaman web, bukan data API* — koneksi dibatasi operator
+  seluler, penyedia internet, atau portal WiFi.
+- *Koneksi aman (HTTPS) gagal* — periksa tanggal & waktu di HP.
+
+Sejak 2026 MangaDex memakai Let's Encrypt dan AniList memakai Google Trust Services,
+sedangkan akar sertifikat keduanya baru ada di trust store Android 7.1.1 ke atas. Karena itu
+mulai versi 1.0.1 aplikasi membundel akar sertifikat publik tersebut (ISRG Root X1/X2,
+GTS Root R1–R4, Amazon Root CA 1, DigiCert Global Root G2) dan menggabungkannya dengan
+trust store bawaan perangkat. Verifikasi sertifikat tetap berjalan; tidak ada host yang
+dilewati tanpa rantai sertifikat valid.
 
 ## Struktur kode
 
@@ -99,7 +122,9 @@ app/src/main/java/id/aninusa/app/
 ├── AniNusaApp.kt              # Application, inisialisasi penyimpanan lokal
 ├── MainActivity.kt
 ├── data/
-│   ├── Http.kt                # OkHttp + cache respons
+│   ├── Http.kt                # OkHttp + cache respons + retry/backoff
+│   ├── TlsRoots.kt            # akar sertifikat tambahan untuk Android 6/7.0
+│   ├── Diagnostics.kt         # pemeriksaan koneksi tiap sumber data
 │   ├── AniListApi.kt          # model + query anime
 │   ├── MangaDexApi.kt         # model, mapping, endpoint komik
 │   ├── LocalStore.kt          # favorit, progres baca, preferensi (SharedPreferences + JSON)
@@ -113,7 +138,7 @@ app/src/main/java/id/aninusa/app/
     ├── anime/                 # detail anime
     ├── manga/                 # detail komik + daftar chapter
     ├── reader/                # pembaca chapter
-    ├── library/               # favorit & riwayat
+    ├── library/               # favorit, riwayat, dan cek update chapter
     └── settings/              # pengaturan
 ```
 

@@ -594,6 +594,9 @@ private fun ChapterRow(
                 )
                 Spacer(Modifier.height(2.dp))
                 when {
+                    // Chapter tanpa gambar (mis. hanya tautan penerbit) tidak bisa diunduh.
+                    chapter.pages <= 0 && downloadProgress == null && !downloaded -> Unit
+
                     downloadProgress != null -> Text(
                         text = "${downloadProgress.done}/${downloadProgress.total}",
                         style = MaterialTheme.typography.labelSmall,

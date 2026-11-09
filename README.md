@@ -1,5 +1,7 @@
 # AniNusa — Anime, Manga, Manhwa & Manhua (Sub Indo)
 
+[![Android CI](https://github.com/AjarHer08/aninusa/actions/workflows/android.yml/badge.svg)](https://github.com/AjarHer08/aninusa/actions/workflows/android.yml)
+
 Aplikasi Android native (Kotlin + Jetpack Compose) untuk menjelajah anime dan membaca
 komik (manga, manhwa, manhua) dengan chapter berbahasa Indonesia.
 
@@ -62,6 +64,24 @@ echo "sdk.dir=/path/ke/Android/Sdk" > local.properties
 APK hasil build ada di `app/build/outputs/apk/debug/app-debug.apk`.
 
 Alternatif: buka folder proyek ini di Android Studio, tunggu Gradle sync, lalu **Run**.
+
+## CI (GitHub Actions)
+
+Workflow [`.github/workflows/android.yml`](.github/workflows/android.yml) berjalan pada setiap
+push ke `main`, pull request, dan bisa dipicu manual:
+
+1. checkout repo dan memasang JDK 17 (Temurin),
+2. `./gradlew assembleDebug`,
+3. mengunggah APK sebagai artifact `aninusa-debug-apk` di tab **Actions** (tersimpan 30 hari).
+
+Push tag versi juga membuat GitHub Release berisi APK:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Jadi APK bisa diunduh tanpa build lokal, langsung dari artifact Actions atau halaman Release.
 
 ## Pasang APK
 

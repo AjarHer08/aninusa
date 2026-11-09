@@ -9,7 +9,7 @@ komik (manga, manhwa, manhua) dengan chapter berbahasa Indonesia.
 - **Min SDK:** 23 (Android 6.0 Marshmallow)
 - **Compile/Target SDK:** 36 (Android 16), sehingga tetap bisa dipasang dan berjalan di
   versi Android yang lebih baru, termasuk Android 17.
-- **APK siap pasang:** [`dist/AniNusa-1.0.5-debug.apk`](dist/AniNusa-1.0.5-debug.apk)
+- **APK siap pasang:** [`dist/AniNusa-1.0.6-debug.apk`](dist/AniNusa-1.0.6-debug.apk)
 
 ## Fitur
 
@@ -39,6 +39,10 @@ komik (manga, manhwa, manhua) dengan chapter berbahasa Indonesia.
   judul di MangaDex dan menandai judul yang punya chapter baru.
 - **Diagnostik koneksi** di Pengaturan untuk mengecek AniList, MangaDex, dan pemuatan gambar
   bila data gagal dimuat.
+- **Baca offline**: di daftar chapter ada tombol **Unduh** per chapter (satu per satu, tanpa unduhan
+  massal). Gambar disimpan di penyimpanan internal aplikasi, lalu bisa dibaca tanpa jaringan
+  dari tab **Koleksi → Unduhan** atau langsung dari daftar chapter. Setiap unduhan bisa dihapus
+  sendiri lewat ikon tempat sampah.
 - **Tautan eksternal** di Pengaturan: daftar situs lain yang dibuka di browser HP, bukan di
   dalam aplikasi. Isi katalog tetap berasal dari API resmi, jadi tidak ada konten situs
   pihak ketiga yang diambil atau ditayangkan aplikasi.
@@ -93,7 +97,7 @@ Jadi APK bisa diunduh tanpa build lokal, langsung dari artifact Actions atau hal
 ## Pasang APK
 
 ```bash
-adb install -r dist/AniNusa-1.0.5-debug.apk
+adb install -r dist/AniNusa-1.0.6-debug.apk
 ```
 
 Atau salin APK ke HP, aktifkan "Instal dari sumber tidak dikenal", lalu buka file APK.

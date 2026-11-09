@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
@@ -50,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import id.aninusa.app.data.ChapterDownloads
 import id.aninusa.app.data.Favorite
 import id.aninusa.app.data.LocalStore
 import id.aninusa.app.data.Manga
@@ -79,7 +81,8 @@ data class MangaDetailUiState(
     val chaptersLoading: Boolean = false,
     val chaptersError: String? = null,
     val selectedLang: String = "id",
-    val notice: String? = null
+    val notice: String? = null,
+    val toast: String? = null
 )
 
 class MangaDetailViewModel : ViewModel() {
@@ -134,6 +137,29 @@ class MangaDetailViewModel : ViewModel() {
         if (mangaId.isNotBlank()) loadChapters(mangaId, _state.value.selectedLang)
     }
 
+    /** Mengunduh satu chapter untuk dibaca offline; tidak ada unduhan massal. */
+    fun downloadChapter(manga: Manga, chapter: MangaChapter) {
+        viewModelScope.launch {
+            val result = ChapterDownloads.get().download(
+                manga = manga,
+                chapter = chapter,
+                dataSaver = LocalStore.get().data.value.prefs.dataSaver
+            )
+            _state.value = _state.value.copy(
+                toast = result.fold(
+                    onSuccess = { "Tersimpan offline · ${it.chapterLabel}" },
+                    onFailure = { error ->
+                        "Gagal mengunduh ${chapter.label}: ${error.toUserMessage()}"
+                    }
+                )
+            )
+        }
+    }
+
+    fun clearToast() {
+        _state.value = _state.value.copy(toast = null)
+    }
+
     private fun loadChapters(id: String, lang: String) {
         _state.value = _state.value.copy(
             chaptersLoading = true,
@@ -173,9 +199,17 @@ fun MangaDetailScreen(
     val viewModel: MangaDetailViewModel = viewModel()
     val state by viewModel.state.collectAsState()
     val userData by LocalStore.get().data.collectAsState()
+    val downloads by ChapterDownloads.get().entries.collectAsState()
+    val downloadProgress by ChapterDownloads.get().progress.collectAsState()
     val context = LocalContext.current
 
     LaunchedEffect(mangaId) { viewModel.load(mangaId) }
+
+    LaunchedEffect(state.toast) {
+        val message = state.toast ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.clearToast()
+    }
 
     val manga = state.manga
     when {
@@ -397,6 +431,18 @@ fun MangaDetailScreen(
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
+                            val offlineCount = downloads.count { it.mangaId == manga.id }
+                            if (offlineCount > 0) {
+                                Text(
+                                    text = "$offlineCount chapter offline · " +
+                                        ChapterDownloads.formatSize(
+                                            downloads.filter { it.mangaId == manga.id }
+                                                .sumOf { it.bytes }
+                                        ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
                         }
                         IconButton(onClick = { viewModel.retryChapters() }) {
                             Icon(
@@ -455,12 +501,23 @@ fun MangaDetailScreen(
                         ChapterRow(
                             chapter = chapter,
                             isCurrent = progress?.chapterId == chapter.id,
+                            downloaded = downloads.any { it.chapterId == chapter.id },
+                            downloadProgress = downloadProgress[chapter.id],
                             onClick = {
                                 if (!chapter.externalUrl.isNullOrBlank()) {
                                     openUrl(context, chapter.externalUrl)
                                 } else {
                                     onRead(chapter.id, chapter.lang, startPage, dataSaver)
                                 }
+                            },
+                            onDownload = { viewModel.downloadChapter(manga, chapter) },
+                            onRemove = {
+                                ChapterDownloads.get().remove(chapter.id)
+                                Toast.makeText(
+                                    context,
+                                    "Unduhan ${chapter.label} dihapus",
+                                    Toast.LENGTH_SHORT
+                                ).show()
                             }
                         )
                     }
@@ -481,7 +538,15 @@ fun MangaDetailScreen(
 }
 
 @Composable
-private fun ChapterRow(chapter: MangaChapter, isCurrent: Boolean, onClick: () -> Unit) {
+private fun ChapterRow(
+    chapter: MangaChapter,
+    isCurrent: Boolean,
+    downloaded: Boolean,
+    downloadProgress: id.aninusa.app.data.DownloadProgress?,
+    onClick: () -> Unit,
+    onDownload: () -> Unit,
+    onRemove: () -> Unit
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -521,11 +586,45 @@ private fun ChapterRow(chapter: MangaChapter, isCurrent: Boolean, onClick: () ->
         if (!chapter.externalUrl.isNullOrBlank()) {
             Pill(text = "Sumber resmi")
         } else {
-            Text(
-                text = if (chapter.pages > 0) "${chapter.pages} hlm" else "—",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = if (chapter.pages > 0) "${chapter.pages} hlm" else "—",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(Modifier.height(2.dp))
+                when {
+                    downloadProgress != null -> Text(
+                        text = "${downloadProgress.done}/${downloadProgress.total}",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    downloaded -> Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Offline",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        IconButton(onClick = onRemove, modifier = Modifier.size(26.dp)) {
+                            Icon(
+                                Icons.Default.Delete,
+                                contentDescription = "Hapus unduhan ${chapter.label}",
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+
+                    else -> TextButton(
+                        onClick = onDownload,
+                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),
+                        modifier = Modifier.height(26.dp)
+                    ) {
+                        Text("Unduh", fontSize = 11.sp)
+                    }
+                }
+            }
         }
     }
 }

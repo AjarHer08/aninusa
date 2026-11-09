@@ -3,6 +3,7 @@ package id.aninusa.app
 import android.app.Application
 import coil.ImageLoader
 import coil.ImageLoaderFactory
+import id.aninusa.app.data.ChapterDownloads
 import id.aninusa.app.data.Http
 import id.aninusa.app.data.LocalStore
 import id.aninusa.app.data.TlsRoots
@@ -13,6 +14,7 @@ class AniNusaApp : Application(), ImageLoaderFactory {
         super.onCreate()
         TlsRoots.install(this)
         LocalStore.init(this)
+        ChapterDownloads.init(this)
     }
 
     /** Gambar komik diunduh dengan klien yang sama, termasuk trust store tambahan. */

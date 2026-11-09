@@ -56,6 +56,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
+import id.aninusa.app.data.ChapterDownloads
 import id.aninusa.app.data.LocalStore
 import id.aninusa.app.data.MangaChapter
 import id.aninusa.app.data.MangaDexApi
@@ -89,7 +90,8 @@ data class ReaderUiState(
     val page: Int = 0,
     val total: Int = 0,
     val dataSaver: Boolean = false,
-    val vertical: Boolean = true
+    val vertical: Boolean = true,
+    val offline: Boolean = false
 )
 
 class ReaderViewModel : ViewModel() {
@@ -117,15 +119,33 @@ class ReaderViewModel : ViewModel() {
             vertical = vertical
         )
         viewModelScope.launch {
-            val detail = runCatching { MangaDexApi.detail(mangaId) }.getOrNull()
-            var chapters = runCatching { MangaDexApi.chapters(mangaId, lang) }.getOrElse { emptyList() }
+            val store = ChapterDownloads.get()
+            val localPages = store.pages(chapterId)
+            val saved = store.entry(chapterId)
+            // Chapter tersimpan dibuka murni dari perangkat, tanpa menunggu jaringan.
+            val offline = localPages.isNotEmpty()
+            val detail = if (offline) null else runCatching { MangaDexApi.detail(mangaId) }.getOrNull()
+            var chapters = if (offline) emptyList()
+            else runCatching { MangaDexApi.chapters(mangaId, lang) }.getOrElse { emptyList() }
             var index = chapters.indexOfFirst { it.id == chapterId }
-            if (index < 0 && lang != "id") {
+            if (index < 0 && lang != "id" && !offline) {
                 chapters = runCatching { MangaDexApi.chapters(mangaId, "id") }.getOrElse { emptyList() }
                 index = chapters.indexOfFirst { it.id == chapterId }
             }
+            // Tanpa jaringan, navigasi antar chapter memakai daftar unduhan perangkat.
+            if (chapters.isEmpty()) {
+                chapters = store.entries.value
+                    .filter { it.mangaId == mangaId }
+                    .sortedBy { it.savedAt }
+                    .map { MangaChapter(id = it.chapterId, label = it.chapterLabel, lang = it.lang) }
+                index = chapters.indexOfFirst { it.id == chapterId }
+            }
             val chapter = chapters.getOrNull(index)
-            val pagesResult = runCatching { MangaDexApi.chapterPages(chapterId, dataSaver) }
+            val pagesResult = if (offline) {
+                Result.success(localPages)
+            } else {
+                runCatching { MangaDexApi.chapterPages(chapterId, dataSaver) }
+            }
             val pages = pagesResult.getOrElse { emptyList() }
 
             val error = when {
@@ -137,9 +157,9 @@ class ReaderViewModel : ViewModel() {
 
             _state.value = _state.value.copy(
                 loading = false,
-                mangaTitle = detail?.title.orEmpty(),
+                mangaTitle = detail?.title ?: saved?.mangaTitle.orEmpty(),
                 coverUrl = detail?.coverUrl,
-                chapterLabel = chapter?.label ?: "Chapter",
+                chapterLabel = chapter?.label ?: saved?.chapterLabel ?: "Chapter",
                 chapterTitle = chapter?.title,
                 externalUrl = chapter?.externalUrl,
                 pages = pages,
@@ -147,6 +167,7 @@ class ReaderViewModel : ViewModel() {
                 page = startPage.coerceIn(0, (pages.size - 1).coerceAtLeast(0)),
                 prevChapter = if (index >= 0) chapters.getOrNull(index + 1) else null,
                 nextChapter = if (index > 0) chapters.getOrNull(index - 1) else null,
+                offline = offline,
                 error = error
             )
             if (pages.isNotEmpty()) persistProgress()
@@ -172,6 +193,10 @@ class ReaderViewModel : ViewModel() {
 
     fun setDataSaver(value: Boolean) {
         if (value == _state.value.dataSaver) return
+        if (_state.value.offline) {
+            _state.value = _state.value.copy(dataSaver = value)
+            return
+        }
         val current = _state.value
         _state.value = current.copy(dataSaver = value, pagesLoading = true)
         viewModelScope.launch {
@@ -318,7 +343,10 @@ private fun ReaderTopBar(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = state.mangaTitle.ifBlank { "Membaca chapter" },
+                    text = buildString {
+                        append(state.mangaTitle.ifBlank { "Membaca chapter" })
+                        if (state.offline) append(" · Offline")
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
@@ -330,8 +358,10 @@ private fun ReaderTopBar(
                 Spacer(Modifier.width(5.dp))
                 Text(if (state.vertical) "Gulir" else "Halaman", fontSize = 12.sp)
             }
-            TextButton(onClick = onToggleSaver) {
-                Text(if (state.dataSaver) "Hemat" else "HD", fontSize = 12.sp)
+            if (!state.offline) {
+                TextButton(onClick = onToggleSaver) {
+                    Text(if (state.dataSaver) "Hemat" else "HD", fontSize = 12.sp)
+                }
             }
         }
         val fraction = if (state.total > 0) (state.page + 1).toFloat() / state.total else 0f

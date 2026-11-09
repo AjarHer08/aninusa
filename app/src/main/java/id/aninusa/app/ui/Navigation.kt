@@ -221,6 +221,9 @@ fun MainScreen(
                             progress.page,
                             userData.prefs.dataSaver
                         )
+                    },
+                    onOpenDownloaded = { mangaId, chapterId, lang ->
+                        onOpenReader(mangaId, chapterId, lang, 0, userData.prefs.dataSaver)
                     }
                 )
 

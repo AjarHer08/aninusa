@@ -20,10 +20,15 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -38,6 +43,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import id.aninusa.app.data.ChapterDownloads
+import id.aninusa.app.data.DownloadedChapter
 import id.aninusa.app.data.Favorite
 import id.aninusa.app.data.LocalStore
 import id.aninusa.app.data.ReadingProgress
@@ -50,11 +57,13 @@ import id.aninusa.app.ui.SegmentedTabs
 fun LibraryScreen(
     onOpenAnime: (Int) -> Unit,
     onOpenManga: (String) -> Unit,
-    onContinueReading: (ReadingProgress) -> Unit
+    onContinueReading: (ReadingProgress) -> Unit,
+    onOpenDownloaded: (mangaId: String, chapterId: String, lang: String) -> Unit
 ) {
     val userData by LocalStore.get().data.collectAsState()
     val viewModel: LibraryViewModel = viewModel()
     val updateState by viewModel.state.collectAsState()
+    val downloads by ChapterDownloads.get().entries.collectAsState()
     var tab by rememberSaveable { mutableIntStateOf(0) }
 
     Column(Modifier.fillMaxSize()) {
@@ -72,7 +81,7 @@ fun LibraryScreen(
         }
 
         SegmentedTabs(
-            options = listOf("Favorit", "Riwayat Baca"),
+            options = listOf("Favorit", "Riwayat Baca", "Unduhan"),
             selectedIndex = tab,
             onSelect = { tab = it },
             modifier = Modifier.padding(horizontal = 16.dp)
@@ -104,7 +113,7 @@ fun LibraryScreen(
                     }
                 }
             }
-        } else {
+        } else if (tab == 1) {
             if (userData.progress.isEmpty()) {
                 EmptyView(
                     title = "Belum ada riwayat baca",
@@ -129,6 +138,87 @@ fun LibraryScreen(
                     }
                 }
             }
+        } else {
+            if (downloads.isEmpty()) {
+                EmptyView(
+                    title = "Belum ada chapter offline",
+                    subtitle = "Buka detail komik, lalu tekan Unduh pada chapter yang ingin disimpan " +
+                        "agar bisa dibaca tanpa jaringan."
+                )
+            } else {
+                LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
+                    item(key = "offline-header") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(
+                                    text = "${downloads.size} chapter tersimpan",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = ChapterDownloads.formatSize(downloads.sumOf { it.bytes }) +
+                                        " di penyimpanan aplikasi",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            TextButton(onClick = { ChapterDownloads.get().removeAll() }) {
+                                Text("Hapus semua")
+                            }
+                        }
+                    }
+                    items(downloads, key = { it.chapterId }) { saved ->
+                        DownloadedRow(saved) {
+                            onOpenDownloaded(saved.mangaId, saved.chapterId, saved.lang)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DownloadedRow(saved: DownloadedChapter, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                text = saved.mangaTitle.ifBlank { "Judul komik" },
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = saved.chapterLabel,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = "${saved.pageCount} halaman · ${ChapterDownloads.formatSize(saved.bytes)}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        IconButton(onClick = { ChapterDownloads.get().remove(saved.chapterId) }) {
+            Icon(
+                Icons.Default.Delete,
+                contentDescription = "Hapus unduhan ${saved.chapterLabel}",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }

@@ -92,6 +92,34 @@ object Http {
     }
 
     /**
+     * Mengunduh berkas biner (gambar chapter) dengan percobaan ulang yang sama
+     * seperti permintaan JSON, lalu mengembalikan isinya beserta tipe konten.
+     */
+    suspend fun bytes(url: String): Pair<ByteArray, String?> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .header("User-Agent", UA)
+            .header("Accept", "image/*")
+            .get()
+            .build()
+        var attempt = 1
+        while (true) {
+            try {
+                return@withContext singleBinaryCall(request)
+            } catch (error: RetryableHttpException) {
+                if (attempt >= MAX_ATTEMPTS) throw ApiException(messageFor(error.code))
+                pause(attempt)
+            } catch (error: SocketTimeoutException) {
+                if (attempt >= MAX_ATTEMPTS) throw error
+                pause(attempt)
+            }
+            attempt++
+        }
+        @Suppress("UNREACHABLE_CODE")
+        throw ApiException("Gambar tidak bisa diunduh.")
+    }
+
+    /**
      * Menjalankan permintaan dengan percobaan ulang singkat untuk batas laju (HTTP 429)
      * dan gangguan server/timeout, lalu menerjemahkan kegagalan menjadi pesan yang jelas.
      */
@@ -128,6 +156,21 @@ object Http {
                 )
             }
             return text
+        }
+    }
+
+    private fun singleBinaryCall(request: Request): Pair<ByteArray, String?> {
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                if (response.code == 429 || response.code >= 500) {
+                    throw RetryableHttpException(response.code)
+                }
+                throw ApiException(messageFor(response.code))
+            }
+            val body = response.body ?: throw ApiException("Server mengirim gambar kosong.")
+            val data = body.bytes()
+            if (data.isEmpty()) throw ApiException("Server mengirim gambar kosong.")
+            return data to body.contentType()?.toString()
         }
     }
 

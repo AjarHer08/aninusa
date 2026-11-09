@@ -1,0 +1,7 @@
+name: probe-setup-gradle
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: gradle/actions/setup-gradle@v6

@@ -1,0 +1,12 @@
+name: probe-upload-artifact
+on: workflow_dispatch
+jobs:
+  p:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: echo hi > out.txt
+      - uses: actions/upload-artifact@v7
+        with:
+          name: probe
+          path: out.txt

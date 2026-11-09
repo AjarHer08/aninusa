@@ -379,8 +379,11 @@ object MangaDexApi {
         val raw = Http.get("$BASE/at-home/server/$chapterId", useCache = false)
         val parsed = runCatching { Http.json.decodeFromString(MdAtHome.serializer(), raw) }.getOrNull()
             ?: throw ApiException("Gagal memuat gambar chapter")
-        val files = if (dataSaver) parsed.chapter.dataSaver else parsed.chapter.data
-        val mode = if (dataSaver) "data-saver" else "data"
+        // Sebagian chapter tidak punya versi hemat data; pakai gambar normal agar tetap bisa dibaca.
+        val useSaver = dataSaver && parsed.chapter.dataSaver.isNotEmpty()
+        val files = if (useSaver) parsed.chapter.dataSaver else parsed.chapter.data
+        val mode = if (useSaver) "data-saver" else "data"
+        if (files.isEmpty()) throw ApiException("Chapter ini tidak punya gambar yang bisa dimuat.")
         return files.map { "${parsed.baseUrl}/$mode/${parsed.chapter.hash}/$it" }
     }
 

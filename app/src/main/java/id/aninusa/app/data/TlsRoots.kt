@@ -40,6 +40,10 @@ object TlsRoots {
     var bundledCount: Int = 0
         private set
 
+    /** True bila akar tambahan benar-benar dipakai oleh klien HTTP. */
+    val active: Boolean
+        get() = trustManager != null && socketFactory != null
+
     fun install(context: Context) {
         if (installed) return
         synchronized(this) {
@@ -81,24 +85,30 @@ object TlsRoots {
         }
     }
 
-    private fun newKeyStore(): KeyStore {
-        val types = listOf("PKCS12", "BKS", KeyStore.getDefaultType()).distinct()
-        for (type in types) {
-            val store = runCatching { KeyStore.getInstance(type) }.getOrNull() ?: continue
-            if (runCatching { store.load(null, null) }.isSuccess) return store
-        }
-        throw IllegalStateException("KeyStore tidak tersedia")
-    }
-
+    /**
+     * Mencoba beberapa tipe KeyStore (PKCS12, BKS, default) sampai satu di antaranya
+     * berhasil dipakai sebagai trust anchor. Bila semuanya gagal, pengguna tetap bisa
+     * memakai trust store sistem dan layar diagnostik melaporkan statusnya.
+     */
     private fun anchorsManager(anchors: List<X509Certificate>): X509TrustManager {
-        val store = newKeyStore()
-        anchors.forEachIndexed { index, certificate ->
-            store.setCertificateEntry("aninusa-root-$index", certificate)
+        val types = listOf("PKCS12", "BKS", KeyStore.getDefaultType()).distinct()
+        var lastError: Throwable? = null
+        for (type in types) {
+            try {
+                val store = KeyStore.getInstance(type)
+                store.load(null, null)
+                anchors.forEachIndexed { index, certificate ->
+                    store.setCertificateEntry("aninusa-root-$index", certificate)
+                }
+                val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
+                factory.init(store)
+                factory.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
+                    ?.let { return it }
+            } catch (error: Throwable) {
+                lastError = error
+            }
         }
-        val factory = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm())
-        factory.init(store)
-        return factory.trustManagers.filterIsInstance<X509TrustManager>().firstOrNull()
-            ?: throw IllegalStateException("TrustManager akar tambahan tidak tersedia")
+        throw IllegalStateException("TrustManager akar tambahan tidak tersedia", lastError)
     }
 
     private fun systemManager(): X509TrustManager? =

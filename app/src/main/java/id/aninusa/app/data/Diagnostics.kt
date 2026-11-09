@@ -51,7 +51,11 @@ object Diagnostics {
             label = "Lingkungan",
             success = true,
             detail = "Android ${Build.VERSION.RELEASE} (API ${Build.VERSION.SDK_INT}) · " +
-                "${TlsRoots.bundledCount} akar sertifikat tambahan"
+                "trust tambahan " + if (TlsRoots.active) {
+                "aktif (${TlsRoots.bundledCount} akar)"
+            } else {
+                "nonaktif (memakai trust store sistem)"
+            }
         )
 
         results

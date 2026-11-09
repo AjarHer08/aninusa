@@ -348,15 +348,21 @@ object MangaDexApi {
 
     private val chapterCache = HashMap<String, List<MangaChapter>>()
 
-    suspend fun chapters(mangaId: String, lang: String): List<MangaChapter> {
+    /**
+     * @param fresh bila true, cache memori dan cache HTTP dilewati sehingga daftar chapter
+     * benar-benar terbaru (dipakai fitur "cek update" di riwayat baca).
+     */
+    suspend fun chapters(mangaId: String, lang: String, fresh: Boolean = false): List<MangaChapter> {
         val cacheKey = "$mangaId|$lang"
-        synchronized(chapterCache) { chapterCache[cacheKey] }?.let { if (it.isNotEmpty()) return it }
+        if (!fresh) {
+            synchronized(chapterCache) { chapterCache[cacheKey] }?.let { if (it.isNotEmpty()) return it }
+        }
         val url = buildString {
             append("$BASE/manga/$mangaId/feed?limit=500&translatedLanguage[]=$lang")
             append("&order[chapter]=desc&includes[]=scanlation_group")
             append("&$CONTENT")
         }
-        val raw = Http.get(url)
+        val raw = Http.get(url, useCache = !fresh)
         val parsed = runCatching {
             Http.json.decodeFromString(MdListResponse.serializer(MdChapter.serializer()), raw)
         }.getOrNull() ?: return emptyList()

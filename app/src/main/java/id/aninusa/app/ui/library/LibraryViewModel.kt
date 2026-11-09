@@ -44,7 +44,7 @@ class LibraryViewModel : ViewModel() {
             val checked = items.take(40)
             checked.forEachIndexed { index, item ->
                 val result = runCatching {
-                    MangaDexApi.chapters(item.mangaId, item.lang.ifBlank { "id" })
+                    MangaDexApi.chapters(item.mangaId, item.lang.ifBlank { "id" }, fresh = true)
                 }
                 val chapters = result.getOrNull()
                 if (chapters.isNullOrEmpty()) {

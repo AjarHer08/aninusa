@@ -9,7 +9,7 @@ komik (manga, manhwa, manhua) dengan chapter berbahasa Indonesia.
 - **Min SDK:** 23 (Android 6.0 Marshmallow)
 - **Compile/Target SDK:** 36 (Android 16), sehingga tetap bisa dipasang dan berjalan di
   versi Android yang lebih baru, termasuk Android 17.
-- **APK siap pasang:** [`dist/AniNusa-1.0.2-debug.apk`](dist/AniNusa-1.0.2-debug.apk)
+- **APK siap pasang:** [`dist/AniNusa-1.0.3-debug.apk`](dist/AniNusa-1.0.3-debug.apk)
 
 ## Fitur
 
@@ -90,7 +90,7 @@ Jadi APK bisa diunduh tanpa build lokal, langsung dari artifact Actions atau hal
 ## Pasang APK
 
 ```bash
-adb install -r dist/AniNusa-1.0.2-debug.apk
+adb install -r dist/AniNusa-1.0.3-debug.apk
 ```
 
 Atau salin APK ke HP, aktifkan "Instal dari sumber tidak dikenal", lalu buka file APK.

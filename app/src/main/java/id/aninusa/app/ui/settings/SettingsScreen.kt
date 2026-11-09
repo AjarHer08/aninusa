@@ -1,5 +1,7 @@
 package id.aninusa.app.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -31,6 +33,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -196,29 +199,27 @@ fun SettingsScreen() {
                     DividerLine()
                 }
             }
-            Spacer(Modifier.height(10.dp))
+        }
+
+        SettingSection("Tautan Eksternal") {
             Text(
-                text = "Tautan Eksternal",
-                style = MaterialTheme.typography.bodyMedium,
-                fontWeight = FontWeight.Medium
-            )
-            Text(
-                text = "Sumber komik dan anime tambahan (link ke situs eksternal)",
+                text = "Situs lain untuk menonton dan membaca. Tautan dibuka di browser, " +
+                    "bukan di dalam aplikasi.",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Spacer(Modifier.height(4.dp))
+            ExternalSiteRow("Samehadaku", "https://samehadaku.li")
+            ExternalSiteRow("Otakudesu", "https://otakudesu.blog")
+            ExternalSiteRow("Komiku", "https://komiku.org")
+            ExternalSiteRow("Anitoki", "https://anitoki.id")
+            ExternalSiteRow("Animasu", "https://animasu.love")
+            ExternalSiteRow("Lendrive", "https://lendrive.web.id")
+            ExternalSiteRow("Hidori Stream", "https://v10.hidoristream.online")
+            ExternalSiteRow("Kuramanime", "https://v20.kuramanime.ing")
+            ExternalSiteRow("Alqanime", "https://alqanime.net")
+            ExternalSiteRow("Kiryuu", "https://v7.kiryuu.to")
         }
-        Spacer(Modifier.height(10.dp))
-        ExternalLinkRow("Samehadaku", "https://samehadaku.li")
-        ExternalLinkRow("Otakudesu", "https://otakudesu.blog")
-        ExternalLinkRow("Komiku", "https://komiku.org")
-        ExternalLinkRow("Anitoki", "https://anitoki.id")
-        ExternalLinkRow("Animasu", "https://animasu.love")
-        ExternalLinkRow("Anime", "https://lendrive.web.id")
-        ExternalLinkRow("Hidori", "https://v10.hidoristream.online")
-        ExternalLinkRow("Kurama", "https://v20.kuramanime.ing")
-        ExternalLinkRow("Alqanime", "https://alqanime.net")
-        ExternalLinkRow("Kiryuu", "https://v7.kiryuu.to")
 
         SettingSection("Tentang") {
             InfoLine("Versi aplikasi", BuildConfig.VERSION_NAME)
@@ -355,24 +356,23 @@ private fun InfoLine(label: String, value: String) {
 }
 
 @Composable
-private fun ExternalLinkRow(title: String, url: String) {
+private fun ExternalSiteRow(title: String, url: String) {
+    val context = LocalContext.current
     Row(
         modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-            .copy(alpha = 0.8f)
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f).padding(end = 8.dp)
         )
-        Button(onClick = { /* Buka di browser sistem */ }) {
-            Text(
-                text = "Buka",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
+        TextButton(onClick = {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            runCatching { context.startActivity(intent) }
+        }) {
+            Text(text = "Buka", style = MaterialTheme.typography.labelSmall)
         }
     }
 }

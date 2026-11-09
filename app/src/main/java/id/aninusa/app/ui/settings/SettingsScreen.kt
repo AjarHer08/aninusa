@@ -196,7 +196,29 @@ fun SettingsScreen() {
                     DividerLine()
                 }
             }
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = "Tautan Eksternal",
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+            Text(
+                text = "Sumber komik dan anime tambahan (link ke situs eksternal)",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
+        Spacer(Modifier.height(10.dp))
+        ExternalLinkRow("Samehadaku", "https://samehadaku.li")
+        ExternalLinkRow("Otakudesu", "https://otakudesu.blog")
+        ExternalLinkRow("Komiku", "https://komiku.org")
+        ExternalLinkRow("Anitoki", "https://anitoki.id")
+        ExternalLinkRow("Animasu", "https://animasu.love")
+        ExternalLinkRow("Anime", "https://lendrive.web.id")
+        ExternalLinkRow("Hidori", "https://v10.hidoristream.online")
+        ExternalLinkRow("Kurama", "https://v20.kuramanime.ing")
+        ExternalLinkRow("Alqanime", "https://alqanime.net")
+        ExternalLinkRow("Kiryuu", "https://v7.kiryuu.to")
 
         SettingSection("Tentang") {
             InfoLine("Versi aplikasi", BuildConfig.VERSION_NAME)
@@ -329,5 +351,28 @@ private fun InfoLine(label: String, value: String) {
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium
         )
+    }
+}
+
+@Composable
+private fun ExternalLinkRow(title: String, url: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+            .copy(alpha = 0.8f)
+        )
+        Button(onClick = { /* Buka di browser sistem */ }) {
+            Text(
+                text = "Buka",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
     }
 }
